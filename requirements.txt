@@ -1,5 +1,5 @@
 # Financial RAG Dependencies
-# Note: For CUDA GPU acceleration with PyTorch, run:
+# Note: For CUDA GPU acceleration with PyTorch, run with yr repective cuda:
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 torch>=2.2.0
 yfinance>=1.7.0
