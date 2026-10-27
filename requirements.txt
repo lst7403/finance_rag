@@ -1,0 +1,22 @@
+# Financial RAG Dependencies
+# Note: For CUDA GPU acceleration with PyTorch, run:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0
+yfinance>=1.7.0
+llama-index>=0.14.0
+llama-index-core>=0.14.0
+llama-index-llms-ollama>=0.11.0
+llama-index-embeddings-huggingface>=0.8.0
+llama-index-vector-stores-chroma>=0.6.0
+chromadb>=1.5.0
+sentence-transformers>=3.0.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.10.0
+requests>=2.32.0
+beautifulsoup4>=4.12.0
+pandas>=2.2.0
+numpy>=1.26.0
+lxml>=5.0.0
+aiohttp>=3.10.0
+

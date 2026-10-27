@@ -1,0 +1,79 @@
+# ==========================================
+# Byte-compiled / Python Cache
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# Virtual Environments
+# ==========================================
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+*.secret
+
+# ==========================================
+# Data Samples & Datasets
+# ==========================================
+data/*.json
+data/fundamentals.json
+data/news.json
+!data/.gitkeep
+
+# ==========================================
+# Databases & Vector Stores (Large Binaries)
+# ==========================================
+# ChromaDB (34MB+ binary vector index) and SQLite databases
+data/database/*
+!data/database/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+*.bin
+*.pickle
+
+# ==========================================
+# Agent Tools, Workflows & Knowledge Graph
+# ==========================================
+.agents/
+graphify-out/
+
+# ==========================================
+# Caches & Build Artifacts
+# ==========================================
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# ==========================================
+# Jupyter Notebook Checkpoints
+# ==========================================
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# ==========================================
+# IDE & OS System Files
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Fundamentals & RAG Stock Selection</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="tableTooltip" class="table-tooltip" aria-live="polite"></div>
+    
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="header-titles">
+                    <h1>📊 Financial Fundamentals & RAG Stock Selection</h1>
+                    <p>Quantitative Financial Metrics + Real-Time News Catalysts • Powered by <strong>LlamaIndex & Qwen 2.5 (7B)</strong></p>
+                </div>
+                <div class="header-actions">
+                    <div id="dbStatusBadge" class="status-badge status-db" title="Data source: SQLite Database (data/database/foundamental_sql.db)">
+                        <span>💾</span> <span id="dbStatusText">SQLite: foundamental_sql.db</span>
+                    </div>
+                    <div id="systemStatusBadge" class="status-badge status-checking">
+                        <span class="status-dot"></span> <span id="statusText">Checking AI Engine...</span>
+                    </div>
+                    <button id="openAiDrawerBtn" class="ai-assistant-btn">
+                        <span class="sparkle-icon">✨</span> AI Stock Analyst
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by ticker, company, sector, or industry...">
+            </div>
+            <select id="metricFilter" class="filter-select">
+                <option value="">All Companies</option>
+                <option value="high-growth">High Growth (EPS 1Y > 20%)</option>
+                <option value="high-profitability">High Profitability (Op Margin > 30%)</option>
+                <option value="strong-cashflow">Strong Cash Flow (FCF Margin > 20%)</option>
+                <option value="low-debt">Low Debt (Net Debt/EBITDA < 2.0)</option>
+                <option value="undervalued">Undervalued (P/E < 20)</option>
+                <option value="expanding-margins">Expanding Margins (Op Margin Trend > 0%)</option>
+                <option value="has-news">Has Recent News Catalysts</option>
+            </select>
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="table">📋 Table View</button>
+                <button class="view-btn" data-view="card">🎴 Card View</button>
+            </div>
+            <button id="refreshPipelineBtn" class="refresh-btn" title="Refresh all fundamentals and latest news into SQLite & ChromaDB">
+                🔄 Sync All Data
+            </button>
+        </div>
+
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalCompanies">0</div>
+                    <div class="stat-label">Companies Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgPE">0</div>
+                    <div class="stat-label">Avg P/E Ratio</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgROE">0</div>
+                    <div class="stat-label">Avg ROE</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgGrowth">0</div>
+                    <div class="stat-label">Avg EPS Growth (1Y)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgFCFMargin">0</div>
+                    <div class="stat-label">Avg FCF Margin</div>
+                </div>
+            </div>
+
+            <div id="tableView" class="table-view">
+                <table>
+                    <thead>
+                        <tr class="category-header">
+                            <th colspan="5" class="category-company">🏢 Company Info & Catalysts</th>
+                            <th colspan="4" class="category-growth">📈 Growth</th>
+                            <th colspan="6" class="category-profitability">💰 Profitability</th>
+                            <th colspan="3" class="category-cashflow">💵 Cash Flow</th>
+                            <th colspan="1" class="category-health">🏦 Financial Health</th>
+                            <th colspan="1" class="category-valuation">📊 Valuation</th>
+                        </tr>
+                        <tr>
+                            <th class="sortable metric-header sticky-col col-ticker" data-sort="ticker">
+                                Ticker <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-company-name" data-sort="company_name">
+                                Company Name <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-news-badge" data-sort="news_count">
+                                News <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-sector" data-sort="sector">
+                                Sector <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-industry" data-sort="industry">
+                                Industry <span class="info-icon">ⓘ</span>
+                            </th>
+
+                            <th class="sortable metric-header col-rev-growth" data-sort="revenue_growth_1y">
+                                Rev Growth 1Y <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-rev-cagr" data-sort="revenue_cagr_3y">
+                                Rev CAGR 3Y <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-eps-growth" data-sort="eps_growth_1y">
+                                EPS Growth 1Y <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-eps-cagr" data-sort="eps_cagr_3y">
+                                EPS CAGR 3Y <span class="info-icon">ⓘ</span>
+                            </th>
+
+                            <th class="sortable metric-header col-gross-margin" data-sort="gross_margin">
+                                Gross Margin <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-op-margin" data-sort="operating_margin">
+                                Op Margin <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-net-margin" data-sort="net_margin">
+                                Net Margin <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-op-trend" data-sort="operating_margin_trend">
+                                Op Margin Trend <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-roe" data-sort="roe">
+                                ROE <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-roic" data-sort="roic">
+                                ROIC <span class="info-icon">ⓘ</span>
+                            </th>
+
+                            <th class="sortable metric-header col-fcf-ni" data-sort="fcf_to_net_income">
+                                FCF/NI <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-fcf-margin" data-sort="fcf_margin">
+                                FCF Margin <span class="info-icon">ⓘ</span>
+                            </th>
+                            <th class="sortable metric-header col-fcf-growth" data-sort="fcf_growth_1y">
+                                FCF Growth 1Y <span class="info-icon">ⓘ</span>
+                            </th>
+
+                            <th class="sortable metric-header col-net-debt" data-sort="net_debt_to_ebitda">
+                                Net Debt/EBITDA <span class="info-icon">ⓘ</span>
+                            </th>
+
+                            <th class="sortable metric-header col-pe" data-sort="pe_ratio">
+                                P/E Ratio <span class="info-icon">ⓘ</span>
+                            </th>
+                        </tr>
+                        <tr class="column-filter-row">
+                            <!-- Company Info Filters -->
+                            <th class="column-filter-cell sticky-col col-ticker">
+                                <div class="column-filter-wrap">
+                                    <input type="text" class="column-filter-input" data-filter-key="ticker" placeholder="Ticker" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-company-name">
+                                <div class="column-filter-wrap">
+                                    <input type="text" class="column-filter-input" data-filter-key="company_name" placeholder="Search name" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-news-badge">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="news_count">
+                                        <option value=">">&gt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="news_count" placeholder="0" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-sector">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-select" data-filter-key="sector" id="sectorFilter">
+                                        <option value="">All Sectors</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-industry">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-select" data-filter-key="industry" id="industryFilter">
+                                        <option value="">All Industries</option>
+                                    </select>
+                                </div>
+                            </th>
+
+                            <!-- Growth Filters -->
+                            <th class="column-filter-cell col-rev-growth">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="revenue_growth_1y">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="revenue_growth_1y" placeholder="5" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-rev-cagr">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="revenue_cagr_3y">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="revenue_cagr_3y" placeholder="5" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-eps-growth">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="eps_growth_1y">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="eps_growth_1y" placeholder="10" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-eps-cagr">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="eps_cagr_3y">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="eps_cagr_3y" placeholder="10" step="any" />
+                                </div>
+                            </th>
+
+                            <!-- Profitability Filters -->
+                            <th class="column-filter-cell col-gross-margin">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="gross_margin">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="gross_margin" placeholder="40" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-op-margin">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="operating_margin">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="operating_margin" placeholder="20" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-net-margin">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="net_margin">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="net_margin" placeholder="15" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-op-trend">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="operating_margin_trend">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="operating_margin_trend" placeholder="0" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-roe">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="roe">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="roe" placeholder="15" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-roic">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="roic">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="roic" placeholder="12" step="any" />
+                                </div>
+                            </th>
+
+                            <!-- Cash Flow Filters -->
+                            <th class="column-filter-cell col-fcf-ni">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="fcf_to_net_income">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="fcf_to_net_income" placeholder="0.8" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-fcf-margin">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="fcf_margin">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="fcf_margin" placeholder="10" step="any" />
+                                </div>
+                            </th>
+                            <th class="column-filter-cell col-fcf-growth">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="fcf_growth_1y">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="fcf_growth_1y" placeholder="5" step="any" />
+                                </div>
+                            </th>
+
+                            <!-- Financial Health Filter -->
+                            <th class="column-filter-cell col-net-debt">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="net_debt_to_ebitda">
+                                        <option value="<">&lt;</option>
+                                        <option value=">">&gt;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="net_debt_to_ebitda" placeholder="2.0" step="any" />
+                                </div>
+                            </th>
+
+                            <!-- Valuation Filter -->
+                            <th class="column-filter-cell col-pe">
+                                <div class="column-filter-wrap">
+                                    <select class="column-filter-op" data-filter-key="pe_ratio">
+                                        <option value="<">&lt;</option>
+                                        <option value=">">&gt;</option>
+                                        <option value="<=">&le;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="=">=</option>
+                                    </select>
+                                    <input type="number" class="column-filter-input" data-filter-key="pe_ratio" placeholder="20" step="any" />
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="20" class="no-data">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="cardView" style="display: none;" class="card-view">
+                <!-- Cards populated dynamically -->
+            </div>
+
+            <!-- Metrics Guide -->
+            <div class="metrics-guide-container">
+                <h3 id="metricsToggle">📚 Complete Metrics Guide & Benchmarks (Click to expand/collapse)</h3>
+                <div id="metricsContent" style="display: none;">
+                    <div class="metrics-grid">
+                        <div class="metric-guide-card guide-company">
+                            <h4>🏢 Company Identifiers</h4>
+                            <p><strong>Ticker:</strong> Unique stock exchange symbol.</p>
+                            <p><strong>Company Name:</strong> Registered corporate entity name.</p>
+                            <p><strong>Sector:</strong> Broad economic sector classification.</p>
+                            <p><strong>Industry:</strong> Specific market sub-industry.</p>
+                        </div>
+                        <div class="metric-guide-card guide-growth">
+                            <h4>📈 Growth Metrics</h4>
+                            <p><strong>Revenue Growth 1Y:</strong> YoY top-line expansion. Benchmark: >10%</p>
+                            <p><strong>Revenue CAGR 3Y:</strong> 3-year compound revenue rate. Benchmark: >15%</p>
+                            <p><strong>EPS Growth 1Y:</strong> YoY diluted earnings per share growth. Benchmark: >20%</p>
+                            <p><strong>EPS CAGR 3Y:</strong> 3-year compound EPS growth power. Benchmark: >20%</p>
+                        </div>
+                        <div class="metric-guide-card guide-profitability">
+                            <h4>💰 Profitability & Capital Efficiency</h4>
+                            <p><strong>Gross Margin:</strong> Gross profit / revenue. Benchmark: >40%</p>
+                            <p><strong>Operating Margin:</strong> EBIT / revenue (operating efficiency). Benchmark: >20%</p>
+                            <p><strong>Net Margin:</strong> Net income / revenue (bottom line). Benchmark: >15%</p>
+                            <p><strong>Op Margin Trend:</strong> Recent margin expansion or contraction. Benchmark: >0%</p>
+                            <p><strong>ROE:</strong> Return on shareholder equity. Benchmark: >15%–20%</p>
+                            <p><strong>ROIC:</strong> Return on invested capital (economic moat). Benchmark: >12%–15%</p>
+                        </div>
+                        <div class="metric-guide-card guide-cashflow">
+                            <h4>💵 Cash Flow Quality</h4>
+                            <p><strong>FCF/NI:</strong> Free cash flow to net income conversion. Benchmark: >0.8</p>
+                            <p><strong>FCF Margin:</strong> Free cash flow as % of revenue. Benchmark: >15%</p>
+                            <p><strong>FCF Growth 1Y:</strong> YoY free cash flow growth. Benchmark: >10%</p>
+                        </div>
+                        <div class="metric-guide-card guide-health">
+                            <h4>🏦 Financial Health & Solvency</h4>
+                            <p><strong>Net Debt/EBITDA:</strong> Leverage ratio. Safe: &lt;2.0 | Negative = Net Cash balance</p>
+                        </div>
+                        <div class="metric-guide-card guide-valuation">
+                            <h4>📊 Valuation</h4>
+                            <p><strong>P/E Ratio:</strong> Price to earnings multiple. Value: &lt;15 | Fair: 15–25 | Growth: 25–40</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Detail Modal with News & AI Thesis -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTicker"></h2>
+                    <div id="modalSubtitle" class="modal-subtitle"></div>
+                </div>
+                <span class="modal-close">&times;</span>
+            </div>
+
+            <!-- Modal Tab Navigation -->
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-tab="tab-fundamentals">📊 Fundamentals</button>
+                <button class="modal-tab" data-tab="tab-news">📰 News Catalysts (<span id="modalNewsCount">0</span>)</button>
+                <button class="modal-tab" data-tab="tab-thesis">⚡ AI Trading Thesis</button>
+            </div>
+
+            <!-- Tab 1: Fundamentals -->
+            <div id="tab-fundamentals" class="modal-tab-pane active">
+                <div id="modalBody" class="modal-body"></div>
+            </div>
+
+            <!-- Tab 2: News Catalysts -->
+            <div id="tab-news" class="modal-tab-pane">
+                <div id="modalNewsList" class="modal-news-list">
+                    <div class="loading-spinner">Loading news...</div>
+                </div>
+            </div>
+
+            <!-- Tab 3: AI Investment Thesis -->
+            <div id="tab-thesis" class="modal-tab-pane">
+                <div class="thesis-header-action">
+                    <p>Generate a multi-factor Bull/Bear investment report combining quantitative financials and recent news catalysts.</p>
+                    <button id="generateThesisBtn" class="generate-thesis-btn">
+                        ⚡ Generate Thesis with Qwen 2.5
+                    </button>
+                </div>
+                <div id="thesisOutput" class="thesis-output">
+                    <div class="thesis-placeholder">Click the button above to generate a comprehensive investment memo for this stock.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Stock Selection Assistant Floating Drawer -->
+    <div id="aiDrawerBackdrop" class="ai-drawer-backdrop"></div>
+    <div id="aiDrawer" class="ai-drawer">
+        <div class="ai-drawer-header">
+            <div class="ai-drawer-title-wrap">
+                <span class="sparkle-icon">✨</span>
+                <div>
+                    <h3>AI Financial Analyst</h3>
+                    <span class="ai-model-tag">LlamaIndex • Qwen 2.5 (7B Local)</span>
+                </div>
+            </div>
+            <button id="closeAiDrawerBtn" class="ai-drawer-close">&times;</button>
+        </div>
+
+        <!-- Quick Suggested Prompts -->
+        <div class="ai-quick-prompts">
+            <div class="prompt-chip" data-prompt="Show me top 3 growth stocks with strong gross margins (>60%) and positive recent news.">
+                🚀 High Growth & Catalysts
+            </div>
+            <div class="prompt-chip" data-prompt="Find high quality compounders with ROIC > 20%, low debt (Net Debt/EBITDA < 1), and solid FCF margin.">
+                💎 Quality & High ROIC
+            </div>
+            <div class="prompt-chip" data-prompt="Which companies have high debt risk (Net Debt/EBITDA > 3) or negative news headwinds?">
+                ⚠️ Debt Risk Watchlist
+            </div>
+            <div class="prompt-chip" data-prompt="Compare NVDA and GOOGL on margins, valuation, return on capital, and recent catalysts.">
+                ⚖️ Compare NVDA vs GOOGL
+            </div>
+        </div>
+
+        <!-- Chat Message Thread -->
+        <div id="aiChatMessages" class="ai-chat-messages">
+            <div class="chat-message assistant">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <p>Hello! I am your <strong>Financial RAG Analyst</strong>. I can screen stocks from <code>foundamental_sql.db</code> (local SQLite database), synthesize recent <code>yfinance</code> news catalysts from <code>news_vector</code>, compare companies, and draft Bull/Bear theses.</p>
+                    <p>Try asking a question or click one of the suggested prompts above!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="ai-chat-input-wrap">
+            <form id="aiChatForm" class="ai-chat-form">
+                <textarea id="aiChatInput" placeholder="Ask anything about stocks, metrics, or news catalysts..." rows="2"></textarea>
+                <div class="ai-input-actions">
+                    <button type="button" id="clearChatBtn" class="clear-chat-btn" title="Clear chat history">🗑️</button>
+                    <button type="submit" id="sendChatBtn" class="send-chat-btn">
+                        <span>Send</span> ➔
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floating Trigger Button -->
+    <button id="floatingAiBtn" class="floating-ai-btn" title="Open AI Stock Analyst">
+        <span class="sparkle-icon">✨</span>
+        <span class="floating-btn-text">AI Analyst</span>
+    </button>
+
+    <script src="tooltipData.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
