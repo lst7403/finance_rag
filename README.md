@@ -134,7 +134,7 @@ python get_data/data_pipeline.py
 
 ### 6. Start the Server
 ```bash
-python run_server.py
+python app.py
 ```
 Access the application dashboard at:
 👉 `http://127.0.0.1:8000`
@@ -195,9 +195,8 @@ Click the **"Sync Data"** button on the dashboard to pull the latest SEC stateme
 
 ```text
 finance_rag/
-├── app.py                      # FastAPI web server and REST/SSE endpoints
+├── app.py                      # FastAPI web server, Ollama check & REST/SSE endpoints
 ├── config.py                   # Centralized application configuration
-├── run_server.py               # Launch script with system and Ollama verification
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Example environment variable overrides
 ├── .gitignore                  # Git tracking rules (excludes databases and caches)

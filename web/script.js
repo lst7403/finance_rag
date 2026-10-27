@@ -155,7 +155,7 @@ async function loadData() {
             } else {
                 // Inform user to start server for SQLite connection
                 document.getElementById('tableBody').innerHTML =
-                    '<tr><td colspan="20" class="no-data"><strong>SQLite Backend Disconnected.</strong><br>Please start the server with <code>python run_server.py</code> to load data from <code>data/database/foundamental_sql.db</code>.</td></tr>';
+                    '<tr><td colspan="20" class="no-data"><strong>SQLite Backend Disconnected.</strong><br>Please start the server with <code>python app.py</code> to load data from <code>data/database/foundamental_sql.db</code>.</td></tr>';
                 const dbText = document.getElementById('dbStatusText');
                 if (dbText) dbText.textContent = 'SQLite: Disconnected';
                 return;
@@ -885,7 +885,7 @@ async function sendAiQuery(queryText) {
                         <strong>Troubleshooting Tips:</strong>
                         <ul>
                             <li>Make sure Ollama is active: <code>ollama run qwen2.5:7b</code></li>
-                            <li>Ensure FastAPI backend is running on port 8000: <code>python run_server.py</code></li>
+                            <li>Ensure FastAPI backend is running on port 8000: <code>python app.py</code></li>
                         </ul>
                     </div>
                 </div>

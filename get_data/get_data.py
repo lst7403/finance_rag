@@ -404,13 +404,19 @@ def get_news_id(item: Dict[str, Any]) -> str:
 def get_ticker_news(ticker_symbol: str, max_news: int = 10) -> List[Dict[str, Any]]:
     """
     Fetches latest news items with UUIDs for a ticker using yfinance.
+    Falls back to yf.Search if t.news is empty (e.g. Yahoo Finance endpoint changes).
     Returns parsed list of articles in memory.
     """
     try:
         t = yf.Ticker(ticker_symbol)
         raw_news = t.news or []
-        parsed_news = []
 
+        # Fallback to yf.Search if t.news is empty
+        if not raw_news:
+            search = yf.Search(ticker_symbol, news_count=max_news)
+            raw_news = search.news or []
+
+        parsed_news = []
         for item in raw_news[:max_news]:
             parsed = _parse_news_item(item, ticker_symbol)
             if parsed:
